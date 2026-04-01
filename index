@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo eksperymentów Dondersa</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-2: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --border: #dbe3ef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 { margin-top: 0; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: var(--muted);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 15px;
+    }
+
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      border: none;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: #475569;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .experiment-area {
+      min-height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      background: #f8fafc;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .center-box {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .fixation {
+      font-size: 64px;
+      font-weight: 700;
+    }
+
+    .stimulus {
+      width: 140px;
+      height: 140px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0 auto;
+      user-select: none;
+    }
+
+    .red { background: var(--danger); }
+    .green { background: var(--accent-2); }
+    .blue { background: var(--accent); }
+    .yellow { background: var(--warning); color: #111827; }
+
+    .key-panel {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .key-chip {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: white;
+      font-weight: 700;
+    }
+
+    .status {
+      font-size: 16px;
+      color: var(--muted);
+      min-height: 24px;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .big {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .progress {
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .stat-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+
+    .hidden { display: none; }
+
+    .footer-note {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    @media (max-width: 860px) {
+      .row { grid-template-columns: 1fr; }
+      .controls, .summary-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Demo eksperymentów Dondersa</h1>
+      <p>
+        Ta aplikacja pokazuje trzy klasyczne typy zadań: <b>czas reakcji prosty</b>,
+        <b>go/no-go</b> oraz <b>czas reakcji z wyborem</b>. To wersja demonstracyjna do zajęć,
+        a nie narzędzie do precyzyjnych badań laboratoryjnych.
+      </p>
+
+      <div class="controls">
+        <div>
+          <label for="trialsPerBlock">Liczba prób na blok</label>
+          <input id="trialsPerBlock" type="number" min="3" max="30" value="8" />
+        </div>
+        <div>
+          <label for="participantName">Badany / grupa</label>
+          <input id="participantName" type="text" placeholder="np. Student 1" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="startBtn">Rozpocznij demo</button>
+        </div>
+      </div>
+      <div class="footer-note">
+        Reakcje: spacja dla zadań prostych i go/no-go; klawisze <b>A</b> oraz <b>L</b> dla zadania z wyborem.
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>Przebieg zadania</h2>
+        <div class="experiment-area" id="experimentArea">
+          <div class="center-box" id="centerBox">
+            <div class="big">Naciśnij „Rozpocznij demo”</div>
+            <p>Każdy blok zaczyna się krótką instrukcją. Potem patrz na środek ekranu i reaguj jak najszybciej.</p>
+          </div>
+        </div>
+        <div class="status" id="statusText"></div>
+        <div class="progress" id="progressText"></div>
+      </div>
+
+      <div class="card">
+        <h2>Instrukcje</h2>
+        <div id="instructionPanel">
+          <p><b>1. Reakcja prosta:</b> gdy pojawi się bodziec, naciśnij <b>spację</b>.</p>
+          <p><b>2. Go / no-go:</b> naciśnij <b>spację</b> tylko dla <b>zielonego</b> bodźca. Nie reaguj na czerwony.</p>
+          <p><b>3. Reakcja z wyborem:</b> naciśnij <b>A</b> dla czerwonego bodźca i <b>L</b> dla zielonego.</p>
+          <div class="key-panel">
+            <div class="key-chip">Spacja = reakcja</div>
+            <div class="key-chip">A = czerwony</div>
+            <div class="key-chip">L = zielony</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="resultsCard">
+      <h2>Wyniki</h2>
+      <canvas id="rtChart" height="110"></canvas>
+
+      <div class="summary-grid" id="summaryGrid"></div>
+
+      <h3>Surowe dane z prób</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Typ zadania</th>
+            <th>Nr próby</th>
+            <th>Bodziec</th>
+            <th>Poprawność</th>
+            <th>RT (ms)</th>
+          </tr>
+        </thead>
+        <tbody id="resultsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      blocks: [],
+      currentBlockIndex: -1,
+      currentTrialIndex: -1,
+      awaitingResponse: false,
+      trialStartTime: null,
+      responseCaptured: false,
+      currentTrial: null,
+      results: [],
+      timerIds: [],
+      chart: null,
+      inInstructionScreen: false,
+      participantName: ''
+    };
+
+    const experimentArea = document.getElementById('experimentArea');
+    const centerBox = document.getElementById('centerBox');
+    const statusText = document.getElementById('statusText');
+    const progressText = document.getElementById('progressText');
+    const startBtn = document.getElementById('startBtn');
+    const trialsPerBlockInput = document.getElementById('trialsPerBlock');
+    const participantNameInput = document.getElementById('participantName');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsTableBody = document.getElementById('resultsTableBody');
+    const summaryGrid = document.getElementById('summaryGrid');
+
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function mean(values) {
+      if (!values.length) return null;
+      return values.reduce((a, b) => a + b, 0) / values.length;
+    }
+
+    function clearTimers() {
+      state.timerIds.forEach(id => clearTimeout(id));
+      state.timerIds = [];
+    }
+
+    function setCenterHTML(html) {
+      centerBox.innerHTML = html;
+    }
+
+    function buildBlocks(trialsPerBlock) {
+      const simpleTrials = Array.from({ length: trialsPerBlock }, (_, i) => ({
+        blockType: 'prosty',
+        stimulus: 'niebieski',
+        correctKey: ' ',
+        trialNo: i + 1
+      }));
+
+      const goNoGoTrials = shuffle([
+        ...Array.from({ length: Math.ceil(trialsPerBlock / 2) }, (_, i) => ({
+          blockType: 'go-no-go',
+          stimulus: 'zielony',
+          correctKey: ' ',
+          isGo: true,
+          trialNo: i + 1
+        })),
+        ...Array.from({ length: Math.floor(trialsPerBlock / 2) }, (_, i) => ({
+          blockType: 'go-no-go',
+          stimulus: 'czerwony',
+          correctKey: null,
+          isGo: false,
+          trialNo: Math.ceil(trialsPerBlock / 2) + i + 1
+        }))
+      ]).slice(0, trialsPerBlock).map((trial, idx) => ({ ...trial, trialNo: idx + 1 }));
+
+      const choiceStimuli = shuffle([
+        ...Array.from({ length: Math.ceil(trialsPerBlock / 2) }, () => 'czerwony'),
+        ...Array.from({ length: Math.floor(trialsPerBlock / 2) }, () => 'zielony')
+      ]).slice(0, trialsPerBlock);
+
+      const choiceTrials = choiceStimuli.map((stimulus, i) => ({
+        blockType: 'wybór',
+        stimulus,
+        correctKey: stimulus === 'czerwony' ? 'a' : 'l',
+        trialNo: i + 1
+      }));
+
+      return [
+        {
+          type: 'prosty',
+          instruction: 'Reakcja prosta: gdy pojawi się niebieski kwadrat, naciśnij SPACJĘ.',
+          trials: simpleTrials
+        },
+        {
+          type: 'go-no-go',
+          instruction: 'Go / No-Go: naciśnij SPACJĘ tylko gdy pojawi się zielony kwadrat. Nie reaguj na czerwony.',
+          trials: goNoGoTrials
+        },
+        {
+          type: 'wybór',
+          instruction: 'Reakcja z wyborem: naciśnij A dla czerwonego i L dla zielonego bodźca.',
+          trials: choiceTrials
+        }
+      ];
+    }
+
+    function getStimulusClass(stimulus) {
+      if (stimulus === 'czerwony') return 'red';
+      if (stimulus === 'zielony') return 'green';
+      if (stimulus === 'niebieski') return 'blue';
+      return 'yellow';
+    }
+
+    function startExperiment() {
+      clearTimers();
+      state.results = [];
+      state.currentBlockIndex = -1;
+      state.currentTrialIndex = -1;
+      state.awaitingResponse = false;
+      state.responseCaptured = false;
+      state.currentTrial = null;
+      state.participantName = participantNameInput.value.trim();
+
+      const trialsPerBlock = Math.max(3, Math.min(30, Number(trialsPerBlockInput.value) || 8));
+      trialsPerBlockInput.value = trialsPerBlock;
+      state.blocks = buildBlocks(trialsPerBlock);
+      resultsCard.classList.add('hidden');
+      resultsTableBody.innerHTML = '';
+      summaryGrid.innerHTML = '';
+
+      nextBlock();
+    }
+
+    function nextBlock() {
+      clearTimers();
+      state.currentBlockIndex += 1;
+      state.currentTrialIndex = -1;
+
+      if (state.currentBlockIndex >= state.blocks.length) {
+        finishExperiment();
+        return;
+      }
+
+      const block = state.blocks[state.currentBlockIndex];
+      state.inInstructionScreen = true;
+      setCenterHTML(`
+        <div class="big">Blok ${state.currentBlockIndex + 1}: ${block.type}</div>
+        <p>${block.instruction}</p>
+        <p><b>Naciśnij Enter, aby rozpocząć blok.</b></p>
+      `);
+      statusText.textContent = 'Czekam na rozpoczęcie bloku...';
+      progressText.textContent = `Blok ${state.currentBlockIndex + 1} z ${state.blocks.length}`;
+    }
+
+    function nextTrial() {
+      clearTimers();
+      state.currentTrialIndex += 1;
+      const block = state.blocks[state.currentBlockIndex];
+
+      if (state.currentTrialIndex >= block.trials.length) {
+        nextBlock();
+        return;
+      }
+
+      const trial = block.trials[state.currentTrialIndex];
+      state.currentTrial = trial;
+      state.awaitingResponse = false;
+      state.responseCaptured = false;
+      state.trialStartTime = null;
+
+      progressText.textContent = `Blok ${state.currentBlockIndex + 1}/${state.blocks.length} • Próba ${state.currentTrialIndex + 1}/${block.trials.length}`;
+      statusText.textContent = 'Przygotuj się...';
+      setCenterHTML('<div class="fixation">+</div>');
+
+      const fixationDuration = 600 + Math.floor(Math.random() * 900);
+      const t1 = setTimeout(() => presentStimulus(trial), fixationDuration);
+      state.timerIds.push(t1);
+    }
+
+    function presentStimulus(trial) {
+      const cssClass = getStimulusClass(trial.stimulus);
+      setCenterHTML(`
+        <div>
+          <div class="stimulus ${cssClass}">${trial.stimulus}</div>
+        </div>
+      `);
+      state.trialStartTime = performance.now();
+      state.awaitingResponse = true;
+      statusText.textContent = 'Reaguj teraz.';
+
+      const stimulusWindow = trial.blockType === 'go-no-go' && !trial.isGo ? 1200 : 2000;
+      const t2 = setTimeout(() => endTrialNoResponse(), stimulusWindow);
+      state.timerIds.push(t2);
+    }
+
+    function handleResponse(key) {
+      if (state.inInstructionScreen && key === 'Enter') {
+        state.inInstructionScreen = false;
+        nextTrial();
+        return;
+      }
+
+      if (!state.awaitingResponse || state.responseCaptured || !state.currentTrial) return;
+
+      const trial = state.currentTrial;
+      const rt = Math.round(performance.now() - state.trialStartTime);
+      const lowerKey = key.length === 1 ? key.toLowerCase() : key;
+
+      let correct = false;
+      let accepted = false;
+
+      if (trial.blockType === 'prosty') {
+        accepted = key === ' ';
+        correct = accepted;
+      } else if (trial.blockType === 'go-no-go') {
+        if (trial.isGo) {
+          accepted = key === ' ';
+          correct = accepted;
+        } else {
+          accepted = true;
+          correct = false;
+        }
+      } else if (trial.blockType === 'wybór') {
+        accepted = lowerKey === 'a' || lowerKey === 'l';
+        correct = accepted && lowerKey === trial.correctKey;
+      }
+
+      if (!accepted) return;
+
+      state.responseCaptured = true;
+      state.awaitingResponse = false;
+      clearTimers();
+
+      state.results.push({
+        taskType: trial.blockType,
+        trialNo: trial.trialNo,
+        stimulus: trial.stimulus,
+        correct,
+        rt: correct ? rt : rt,
+        responded: true,
+        expectedResponse: trial.correctKey
+      });
+
+      setCenterHTML(`<div class="big">${correct ? 'Poprawnie' : 'Błąd'}</div><p>${rt} ms</p>`);
+      statusText.textContent = correct ? 'Odpowiedź poprawna.' : 'Odpowiedź niepoprawna.';
+
+      const t3 = setTimeout(() => nextTrial(), 700);
+      state.timerIds.push(t3);
+    }
+
+    function endTrialNoResponse() {
+      if (!state.currentTrial || state.responseCaptured) return;
+      const trial = state.currentTrial;
+      state.awaitingResponse = false;
+      state.responseCaptured = true;
+
+      let correct;
+      if (trial.blockType === 'go-no-go' && !trial.isGo) {
+        correct = true;
+      } else {
+        correct = false;
+      }
+
+      state.results.push({
+        taskType: trial.blockType,
+        trialNo: trial.trialNo,
+        stimulus: trial.stimulus,
+        correct,
+        rt: null,
+        responded: false,
+        expectedResponse: trial.correctKey
+      });
+
+      setCenterHTML(`<div class="big">${correct ? 'Poprawnie — brak reakcji' : 'Brak reakcji'}</div>`);
+      statusText.textContent = correct ? 'Prawidłowo wstrzymana reakcja.' : 'Za wolno albo brak reakcji.';
+
+      const t4 = setTimeout(() => nextTrial(), 700);
+      state.timerIds.push(t4);
+    }
+
+    function finishExperiment() {
+      clearTimers();
+      setCenterHTML(`
+        <div class="big">Koniec demo</div>
+        <p>Wyniki znajdują się poniżej.</p>
+      `);
+      statusText.textContent = 'Demo zakończone.';
+      progressText.textContent = '';
+      renderResults();
+    }
+
+    function renderResults() {
+      resultsCard.classList.remove('hidden');
+
+      resultsTableBody.innerHTML = state.results.map(row => `
+        <tr>
+          <td>${row.taskType}</td>
+          <td>${row.trialNo}</td>
+          <td>${row.stimulus}</td>
+          <td>${row.correct ? 'tak' : 'nie'}</td>
+          <td>${row.rt !== null ? row.rt : '—'}</td>
+        </tr>
+      `).join('');
+
+      const taskLabels = ['prosty', 'go-no-go', 'wybór'];
+      const averageRTs = taskLabels.map(task => {
+        const vals = state.results
+          .filter(r => r.taskType === task && r.correct && r.rt !== null)
+          .map(r => r.rt);
+        const m = mean(vals);
+        return m ? Math.round(m) : null;
+      });
+
+      const accuracies = taskLabels.map(task => {
+        const subset = state.results.filter(r => r.taskType === task);
+        if (!subset.length) return null;
+        return Math.round((subset.filter(r => r.correct).length / subset.length) * 100);
+      });
+
+      summaryGrid.innerHTML = taskLabels.map((task, i) => `
+        <div class="stat-box">
+          <h3>${task}</h3>
+          <p><b>Średni RT:</b> ${averageRTs[i] ?? '—'} ms</p>
+          <p><b>Poprawność:</b> ${accuracies[i] ?? '—'}%</p>
+        </div>
+      `).join('');
+
+      const ctx = document.getElementById('rtChart').getContext('2d');
+      if (state.chart) state.chart.destroy();
+
+      state.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Prosty', 'Go / No-Go', 'Wybór'],
+          datasets: [
+            {
+              label: 'Średni czas reakcji (ms)',
+              data: averageRTs,
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+            title: {
+              display: true,
+              text: state.participantName
+                ? `Średnie czasy reakcji — ${state.participantName}`
+                : 'Średnie czasy reakcji'
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Milisekundy'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+      }
+      if (e.code === 'Space') handleResponse(' ');
+      else if (e.key === 'Enter') handleResponse('Enter');
+      else handleResponse(e.key);
+    });
+
+    startBtn.addEventListener('click', startExperiment);
+  </script>
+</body>
+</html>
